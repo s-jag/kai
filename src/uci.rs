@@ -246,6 +246,18 @@ impl UciEngine {
             .position
             .search(&mut self.tt, time_limit, depth_limit, Some(stop_flag));
 
+        // Log bestmove for debugging
+        eprintln!(
+            "BESTMOVE: {} for side {:?}",
+            result.best_move.to_uci(),
+            self.position.side_to_move
+        );
+        if let Some(piece) = self.position.piece_at(result.best_move.from_sq()) {
+            eprintln!("  Piece at source: {:?}", piece);
+        } else {
+            eprintln!("  WARNING: No piece at source square!");
+        }
+
         // Output best move
         writeln!(stdout, "bestmove {}", result.best_move.to_uci()).unwrap();
         stdout.flush().unwrap();

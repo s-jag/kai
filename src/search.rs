@@ -119,6 +119,13 @@ impl Position {
         depth_limit: Option<u8>,
         stop_flag: Option<&'static AtomicBool>,
     ) -> SearchResult {
+        // Log search start for debugging
+        eprintln!(
+            "SEARCH START: side={:?} fen={}",
+            self.side_to_move,
+            self.to_fen()
+        );
+
         let start_time = Instant::now();
         let mut info = SearchInfo::new(start_time);
         if let Some(limit) = time_limit {
