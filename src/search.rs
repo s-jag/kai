@@ -566,25 +566,38 @@ impl Position {
                 if score > alpha {
                     alpha = score;
 
-                    // Update PV - with debug validation
-                    #[cfg(debug_assertions)]
-                    {
-                        if let Some(piece) = self.piece_at(mv.from_sq()) {
-                            debug_assert_eq!(
-                                piece.color(),
-                                self.side_to_move,
-                                "PV move {} is for {:?} but position has {:?} to move at ply {}",
+                    // CRITICAL: Validate move color before adding to PV
+                    let mv_valid = if let Some(piece) = self.piece_at(mv.from_sq()) {
+                        if piece.color() != self.side_to_move {
+                            eprintln!(
+                                "BUG: negamax ply {} trying to add move {} for {:?} but side is {:?}",
+                                ply,
                                 mv.to_uci(),
                                 piece.color(),
-                                self.side_to_move,
-                                ply
+                                self.side_to_move
                             );
+                            eprintln!("Position: {}", self.to_fen());
+                            false
+                        } else {
+                            true
                         }
-                    }
+                    } else {
+                        eprintln!(
+                            "BUG: negamax ply {} move {} has no piece at source",
+                            ply,
+                            mv.to_uci()
+                        );
+                        false
+                    };
 
-                    pv.clear();
-                    pv.push(mv);
-                    pv.extend_from_slice(&local_pv);
+                    if mv_valid {
+                        pv.clear();
+                        pv.push(mv);
+                        pv.extend_from_slice(&local_pv);
+                    } else {
+                        // Don't update PV with invalid move - this should never happen
+                        // but if it does, leave PV empty rather than corrupt it
+                    }
 
                     if score >= beta {
                         // Beta cutoff - update heuristics
