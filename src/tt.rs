@@ -18,6 +18,8 @@ pub enum Bound {
 pub struct TTEntry {
     /// Upper 32 bits of hash key for verification
     pub key: u32,
+    /// Bits 16-31 of hash key for additional collision resistance
+    pub key_low: u16,
     /// Best move found
     pub best_move: Move,
     /// Evaluation score
@@ -29,7 +31,7 @@ pub struct TTEntry {
     /// Age counter for replacement
     pub age: u8,
     /// Padding for alignment
-    _padding: [u8; 3],
+    _padding: u8,
 }
 
 impl TTEntry {
@@ -60,9 +62,10 @@ impl TTEntry {
     }
 
     /// Check if this entry is valid for the given hash
+    /// Uses 48 bits of the hash for collision resistance (upper 32 + bits 16-31)
     #[inline(always)]
     pub fn is_valid(&self, hash: u64) -> bool {
-        self.key == (hash >> 32) as u32
+        self.key == (hash >> 32) as u32 && self.key_low == ((hash >> 16) & 0xFFFF) as u16
     }
 
     /// Check if this entry's depth is sufficient
@@ -149,6 +152,7 @@ impl TranspositionTable {
         let idx = self.index(hash);
         let existing = &self.table[idx];
         let key = (hash >> 32) as u32;
+        let key_low = ((hash >> 16) & 0xFFFF) as u16;
 
         // Replacement policy:
         // - Always replace if different position
@@ -156,6 +160,7 @@ impl TranspositionTable {
         // - Replace if same position and older entry
         // - Replace if exact bound (PV nodes are valuable)
         let should_replace = existing.key != key
+            || existing.key_low != key_low
             || existing.age != self.age
             || depth >= existing.depth as i32
             || bound == Bound::Exact;
@@ -163,12 +168,13 @@ impl TranspositionTable {
         if should_replace {
             self.table[idx] = TTEntry {
                 key,
+                key_low,
                 best_move,
                 score: TTEntry::score_to_tt(score, ply),
                 depth: depth as i8,
                 bound,
                 age: self.age,
-                _padding: [0; 3],
+                _padding: 0,
             };
         } else if !best_move.is_null() && existing.best_move.is_null() {
             // Always update move if we have one and existing doesn't

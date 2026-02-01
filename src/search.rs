@@ -213,6 +213,50 @@ impl Position {
                 break;
             }
 
+            // Validate entire PV has correct alternating colors
+            // This catches any corruption in PV collection
+            {
+                let mut check_pos = self.clone();
+                for (i, pv_mv) in pv.iter().enumerate() {
+                    if let Some(piece) = check_pos.piece_at(pv_mv.from_sq()) {
+                        if piece.color() != check_pos.side_to_move {
+                            eprintln!(
+                                "BUG: PV[{}] {} wrong color at depth {}. Expected {:?}, got {:?}",
+                                i,
+                                pv_mv.to_uci(),
+                                depth,
+                                check_pos.side_to_move,
+                                piece.color()
+                            );
+                            eprintln!("Position: {}", check_pos.to_fen());
+                            // Truncate PV at the corrupted point
+                            pv.truncate(i);
+                            if i == 0 {
+                                // First move is wrong - this is critical, regenerate
+                                let mut moves = crate::moves::MoveList::new();
+                                self.generate_legal_moves(&mut moves);
+                                if !moves.is_empty() {
+                                    best_move = moves.get(0);
+                                    pv.clear();
+                                    pv.push(best_move);
+                                }
+                            }
+                            break;
+                        }
+                    } else {
+                        eprintln!(
+                            "BUG: PV[{}] {} has no piece at source at depth {}",
+                            i,
+                            pv_mv.to_uci(),
+                            depth
+                        );
+                        pv.truncate(i);
+                        break;
+                    }
+                    check_pos = check_pos.make_move(*pv_mv);
+                }
+            }
+
             // Print UCI info
             let elapsed = start_time.elapsed();
             let nps = if elapsed.as_millis() > 0 {
@@ -474,6 +518,25 @@ impl Position {
 
         for i in 0..moves.len() {
             let mv = pick_move(&mut moves, i);
+
+            // CRITICAL: Validate move belongs to side to move
+            // This should never fire if move generation is correct, but serves as a safety net
+            if let Some(piece) = self.piece_at(mv.from_sq()) {
+                if piece.color() != self.side_to_move {
+                    eprintln!(
+                        "BUG: negamax move {} has wrong color! Expected {:?}, got {:?}",
+                        mv.to_uci(),
+                        self.side_to_move,
+                        piece.color()
+                    );
+                    eprintln!("Position: {}", self.to_fen());
+                    continue; // Skip this invalid move
+                }
+            } else {
+                eprintln!("BUG: negamax move {} has no piece at source!", mv.to_uci());
+                eprintln!("Position: {}", self.to_fen());
+                continue; // Skip this invalid move
+            }
 
             // SEE pruning for bad captures (skip losing captures after first few moves)
             if !is_pv && moves_searched >= 2 && mv.is_capture() && !self.see_ge(mv, 0) {

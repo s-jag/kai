@@ -241,10 +241,10 @@ impl UciEngine {
         STOP_FLAG.store(false, Ordering::SeqCst);
 
         // Run search
-        let stop_flag: &'static AtomicBool = unsafe { std::mem::transmute(&STOP_FLAG) };
+        // STOP_FLAG is a static, so &STOP_FLAG already has 'static lifetime - no transmute needed
         let result = self
             .position
-            .search(&mut self.tt, time_limit, depth_limit, Some(stop_flag));
+            .search(&mut self.tt, time_limit, depth_limit, Some(&STOP_FLAG));
 
         // Log bestmove for debugging
         eprintln!(
