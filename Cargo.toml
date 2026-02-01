@@ -1,0 +1,23 @@
+[package]
+name = "kai"
+version = "0.1.0"
+edition = "2021"
+authors = ["Sahith Jagarlamudi"]
+description = "A UCI-compatible chess engine"
+license = "MIT"
+
+[dependencies]
+
+[dev-dependencies]
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+opt-level = 3
+
+[profile.dev]
+opt-level = 1
+
+[features]
+default = []
