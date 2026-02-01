@@ -9,7 +9,7 @@ token: ""  # Leave empty - lichess-bot reads from LICHESS_BOT_TOKEN env var
 url: "https://lichess.org"
 
 engine:
-  dir: "../target/release"
+  dir: "../../target/release"
   name: "kai"
   protocol: "uci"
   ponder: false
