@@ -15,6 +15,10 @@ impl Square {
     pub const F1: Square = Square(5);
     pub const G1: Square = Square(6);
     pub const H1: Square = Square(7);
+    pub const E2: Square = Square(12);
+    pub const E4: Square = Square(28);
+    pub const D5: Square = Square(35);
+    pub const E7: Square = Square(52);
     pub const A8: Square = Square(56);
     pub const B8: Square = Square(57);
     pub const C8: Square = Square(58);

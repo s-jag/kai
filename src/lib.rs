@@ -4,6 +4,7 @@ pub mod magic;
 pub mod position;
 pub mod moves;
 pub mod movegen;
+pub mod make_move;
 pub mod zobrist;
 pub mod tt;
 pub mod eval;

@@ -411,13 +411,3 @@ mod tests {
     }
 }
 
-// Re-export Square constants we need
-impl Square {
-    pub const E2: Square = Square(12);
-    pub const E4: Square = Square(28);
-    pub const D5: Square = Square(35);
-    pub const E7: Square = Square(52);
-    pub const D8: Square = Square(59);
-    pub const G1: Square = Square(6);
-    pub const C1: Square = Square(2);
-}
