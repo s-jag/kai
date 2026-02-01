@@ -269,10 +269,19 @@ impl Position {
 
         // Probe transposition table
         let tt_entry = tt.probe(self.hash);
-        // Validate TT move - must have a piece at source square
+        // Validate TT move - must have OUR piece at source square
         let tt_move = tt_entry
             .map(|e| e.best_move)
-            .filter(|mv| mv.is_null() || self.piece_at(mv.from_sq()).is_some())
+            .filter(|mv| {
+                if mv.is_null() {
+                    return true;
+                }
+                // Check that we have a piece at the source AND it's our piece
+                match self.piece_at(mv.from_sq()) {
+                    Some(piece) => piece.color() == self.side_to_move,
+                    None => false,
+                }
+            })
             .unwrap_or(Move::NULL);
 
         // TT cutoff (not in PV nodes)
