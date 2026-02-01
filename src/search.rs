@@ -26,6 +26,7 @@ pub struct SearchInfo {
     pub nodes: u64,
     pub start_time: Instant,
     pub time_limit: Option<Duration>,
+    pub deadline: Option<Instant>,
     pub depth_limit: Option<u8>,
     pub stopped: bool,
     pub stop_flag: Option<&'static AtomicBool>,
@@ -39,12 +40,19 @@ impl SearchInfo {
             nodes: 0,
             start_time,
             time_limit: None,
+            deadline: None,
             depth_limit: None,
             stopped: false,
             stop_flag: None,
             heuristics: SearchHeuristics::new(),
             sel_depth: 0,
         }
+    }
+
+    /// Set time limit and compute deadline
+    pub fn set_time_limit(&mut self, limit: Duration) {
+        self.time_limit = Some(limit);
+        self.deadline = Some(self.start_time + limit);
     }
 
     /// Check if search should stop
@@ -62,9 +70,9 @@ impl SearchInfo {
             }
         }
 
-        // Check time limit
-        if let Some(limit) = self.time_limit {
-            if self.start_time.elapsed() >= limit {
+        // Check deadline (faster than computing elapsed)
+        if let Some(deadline) = self.deadline {
+            if Instant::now() >= deadline {
                 self.stopped = true;
                 return true;
             }
@@ -113,7 +121,9 @@ impl Position {
     ) -> SearchResult {
         let start_time = Instant::now();
         let mut info = SearchInfo::new(start_time);
-        info.time_limit = time_limit;
+        if let Some(limit) = time_limit {
+            info.set_time_limit(limit);
+        }
         info.depth_limit = depth_limit;
         info.stop_flag = stop_flag;
 
@@ -231,8 +241,8 @@ impl Position {
             info.sel_depth = ply as u8;
         }
 
-        // Check for timeout
-        if info.nodes & 2047 == 0 && info.should_stop() {
+        // Check for timeout (every 4096 nodes to reduce syscall overhead)
+        if info.nodes & 4095 == 0 && info.should_stop() {
             return 0;
         }
 
@@ -366,7 +376,16 @@ impl Position {
 
         for i in 0..moves.len() {
             let mv = pick_move(&mut moves, i);
+
+            // SEE pruning for bad captures (skip losing captures after first few moves)
+            if !is_pv && moves_searched >= 2 && mv.is_capture() && !self.see_ge(mv, 0) {
+                continue;
+            }
+
             let new_pos = self.make_move(mv);
+
+            // Prefetch TT entry for child position
+            tt.prefetch(new_pos.hash);
 
             let mut score: i16;
 

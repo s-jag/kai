@@ -174,7 +174,7 @@ fn score_move(
         return TT_MOVE_SCORE;
     }
 
-    // Captures use MVV-LVA or SEE
+    // Captures use MVV-LVA only (SEE deferred to search loop for lazy evaluation)
     if mv.is_capture() {
         let victim = if mv.is_en_passant() {
             PieceType::Pawn
@@ -189,14 +189,8 @@ fn score_move(
             None => return 0, // Invalid move, give it lowest priority
         };
 
-        let mvv_lva = MVV_LVA[victim as usize][attacker as usize];
-
-        // Use SEE to classify as good or bad capture
-        if pos.see_ge(mv, 0) {
-            return GOOD_CAPTURE_BASE + mvv_lva;
-        } else {
-            return BAD_CAPTURE_BASE + mvv_lva;
-        }
+        // Use MVV-LVA for ordering; SEE pruning done in search loop
+        return GOOD_CAPTURE_BASE + MVV_LVA[victim as usize][attacker as usize];
     }
 
     // Promotions
@@ -225,7 +219,23 @@ fn score_move(
 
 /// Pick the best move from the remaining moves (selection sort)
 /// Moves the best move to position `start` and returns it
+#[inline]
 pub fn pick_move(list: &mut MoveList, start: usize) -> Move {
+    let remaining = list.len() - start;
+
+    // Fast path for small remaining lists
+    if remaining <= 1 {
+        return list.get(start);
+    }
+
+    if remaining == 2 {
+        if list.score(start + 1) > list.score(start) {
+            list.swap(start, start + 1);
+        }
+        return list.get(start);
+    }
+
+    // Standard selection sort for larger lists
     let mut best_idx = start;
     let mut best_score = list.score(start);
 
