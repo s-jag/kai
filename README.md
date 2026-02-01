@@ -1,15 +1,17 @@
 # Kai Chess Engine
 
-A UCI-compatible chess engine written in Rust, implementing modern chess programming techniques for strong and efficient play.
+A chess engine written in Rust, implementing modern chess programming techniques for strong and efficient play. Supports both UCI and XBoard protocols for maximum GUI compatibility.
 
 ## Features
 
+- **Dual Protocol Support**: Compatible with both UCI and XBoard/WinBoard protocols
 - **Bitboard Representation**: Efficient 64-bit board representation with magic bitboards for sliding piece attacks
 - **Legal Move Generation**: Fully legal move generation with perft-validated correctness
 - **Alpha-Beta Search**: Negamax search with principal variation search (PVS) and various pruning techniques
 - **Transposition Table**: Zobrist hashing with depth-preferred replacement policy
 - **Tapered Evaluation**: Smooth interpolation between middlegame and endgame evaluation
 - **UCI Protocol**: Full Universal Chess Interface support for GUI compatibility
+- **XBoard Protocol**: Full XBoard/WinBoard/CECP support for legacy GUI compatibility
 
 ## Building
 
@@ -45,6 +47,12 @@ cargo test test_perft_startpos
 
 ## Usage
 
+### Protocol Auto-Detection
+
+Kai automatically detects which protocol to use based on the first command received:
+- If `uci` is received, UCI mode is activated
+- If `xboard` is received, XBoard mode is activated
+
 ### As a UCI Engine
 
 Kai implements the Universal Chess Interface (UCI) protocol, making it compatible with any UCI-compliant chess GUI such as:
@@ -56,17 +64,41 @@ Kai implements the Universal Chess Interface (UCI) protocol, making it compatibl
 
 Simply add the `kai` binary as a new engine in your preferred GUI.
 
-### Command Line
+### As an XBoard Engine
+
+Kai also implements the XBoard/WinBoard protocol (CECP - Chess Engine Communication Protocol), making it compatible with:
+
+- [XBoard](https://www.gnu.org/software/xboard/)
+- [WinBoard](http://hgm.nubati.net/winboard.html)
+- [PyChess](https://pychess.github.io/)
+- [Scid vs PC](http://scidvspc.sourceforge.net/)
+- [ChessX](https://chessx.sourceforge.io/)
+
+### Command Line (UCI)
 
 ```bash
 # Start the engine
 ./target/release/kai
 
-# The engine will wait for UCI commands
+# The engine will wait for protocol commands
 uci
 isready
 position startpos moves e2e4 e7e5
 go depth 10
+quit
+```
+
+### Command Line (XBoard)
+
+```bash
+# Start the engine
+./target/release/kai
+
+# XBoard mode
+xboard
+protover 2
+new
+go
 quit
 ```
 
@@ -88,7 +120,38 @@ quit
 | `quit` | Exit the engine |
 | `setoption name Hash value <mb>` | Set hash table size (1-4096 MB) |
 
-### Debug Commands
+### XBoard Commands
+
+| Command | Description |
+|---------|-------------|
+| `xboard` | Initialize XBoard mode |
+| `protover N` | Request protocol version N features |
+| `new` | Start a new game (engine plays Black) |
+| `force` | Enter force mode (stop auto-playing) |
+| `go` | Start playing for the side to move |
+| `playother` | Play the color not to move |
+| `level MPS BASE INC` | Set time control |
+| `st N` | Set time per move (seconds) |
+| `sd N` | Set search depth limit |
+| `time N` | Set engine's remaining time (centiseconds) |
+| `otim N` | Set opponent's remaining time (centiseconds) |
+| `usermove MOVE` | Make a move |
+| `?` | Move immediately |
+| `ping N` | Respond with pong N |
+| `setboard FEN` | Set position from FEN |
+| `hint` | Request a hint |
+| `undo` | Undo last move |
+| `remove` | Undo last two moves |
+| `hard` | Enable pondering |
+| `easy` | Disable pondering |
+| `post` | Enable thinking output |
+| `nopost` | Disable thinking output |
+| `analyze` | Enter analysis mode |
+| `exit` | Exit analysis mode |
+| `memory N` | Set hash table size (MB) |
+| `quit` | Exit the engine |
+
+### Debug Commands (UCI mode)
 
 | Command | Description |
 |---------|-------------|
@@ -109,7 +172,7 @@ kai/
 │   ├── SEARCH.md           # Search algorithm details
 │   └── EVALUATION.md       # Evaluation function details
 └── src/
-    ├── main.rs             # Entry point
+    ├── main.rs             # Entry point with protocol auto-detection
     ├── lib.rs              # Library exports
     ├── types.rs            # Core types (Square, Piece, Color)
     ├── bitboard.rs         # Bitboard operations
@@ -125,7 +188,8 @@ kai/
     ├── qsearch.rs          # Quiescence search
     ├── see.rs              # Static exchange evaluation
     ├── ordering.rs         # Move ordering
-    ├── uci.rs              # UCI protocol
+    ├── uci.rs              # UCI protocol implementation
+    ├── xboard.rs           # XBoard/WinBoard protocol implementation
     └── perft.rs            # Perft testing
 ```
 
@@ -241,6 +305,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 - [Stockfish](https://stockfishchess.org/) - Inspiration for many techniques
 - [PeSTO](https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function) - Piece-square table values
 - [Rustic Chess](https://rustic-chess.org/) - Rust chess engine reference
+- [XBoard Protocol](https://www.gnu.org/software/xboard/engine-intf.html) - CECP specification
 
 ## Author
 
