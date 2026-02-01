@@ -176,8 +176,27 @@ impl Position {
                 } else {
                     best_score = score;
                     if !current_pv.is_empty() {
-                        best_move = current_pv[0];
-                        pv = current_pv;
+                        // Validate PV[0] before accepting
+                        let pv_move = current_pv[0];
+                        let valid = if let Some(piece) = self.piece_at(pv_move.from_sq()) {
+                            piece.color() == self.side_to_move
+                        } else {
+                            false
+                        };
+
+                        if valid {
+                            best_move = pv_move;
+                            pv = current_pv;
+                        } else {
+                            eprintln!(
+                                "WARN: Rejecting invalid PV at depth {}: {} (side: {:?})",
+                                depth,
+                                pv_move.to_uci(),
+                                self.side_to_move
+                            );
+                            eprintln!("Position: {}", self.to_fen());
+                            // Don't update pv, keep the previous valid one
+                        }
                     }
                     break;
                 }
@@ -212,6 +231,69 @@ impl Position {
             // If mate found, no need to search deeper
             if best_score.abs() >= MATE_BOUND {
                 break;
+            }
+        }
+
+        // CRITICAL: Validate that best_move and PV belong to the correct side
+        // This is a defensive check against TT corruption or hash collisions
+        let mut needs_fallback = false;
+
+        if !best_move.is_null() {
+            if let Some(piece) = self.piece_at(best_move.from_sq()) {
+                if piece.color() != self.side_to_move {
+                    // This should NEVER happen - if it does, we have a serious bug
+                    eprintln!(
+                        "CRITICAL: best_move {} is for {:?} but position has {:?} to move!",
+                        best_move.to_uci(),
+                        piece.color(),
+                        self.side_to_move
+                    );
+                    eprintln!("Position: {}", self.to_fen());
+                    needs_fallback = true;
+                }
+            } else {
+                // No piece at source - also a bug
+                eprintln!(
+                    "CRITICAL: best_move {} has no piece at source square!",
+                    best_move.to_uci()
+                );
+                eprintln!("Position: {}", self.to_fen());
+                needs_fallback = true;
+            }
+        }
+
+        // Also validate PV[0] if it exists and differs from best_move
+        if !pv.is_empty() && !needs_fallback {
+            let pv_move = pv[0];
+            if let Some(piece) = self.piece_at(pv_move.from_sq()) {
+                if piece.color() != self.side_to_move {
+                    eprintln!(
+                        "CRITICAL: PV[0] {} is for {:?} but position has {:?} to move!",
+                        pv_move.to_uci(),
+                        piece.color(),
+                        self.side_to_move
+                    );
+                    eprintln!("Position: {}", self.to_fen());
+                    needs_fallback = true;
+                }
+            } else {
+                eprintln!(
+                    "CRITICAL: PV[0] {} has no piece at source square!",
+                    pv_move.to_uci()
+                );
+                eprintln!("Position: {}", self.to_fen());
+                needs_fallback = true;
+            }
+        }
+
+        if needs_fallback {
+            // Fall back to generating a legal move
+            let mut moves = crate::moves::MoveList::new();
+            self.generate_legal_moves(&mut moves);
+            if !moves.is_empty() {
+                best_move = moves.get(0);
+                pv.clear();
+                pv.push(best_move);
             }
         }
 
@@ -484,7 +566,22 @@ impl Position {
                 if score > alpha {
                     alpha = score;
 
-                    // Update PV
+                    // Update PV - with debug validation
+                    #[cfg(debug_assertions)]
+                    {
+                        if let Some(piece) = self.piece_at(mv.from_sq()) {
+                            debug_assert_eq!(
+                                piece.color(),
+                                self.side_to_move,
+                                "PV move {} is for {:?} but position has {:?} to move at ply {}",
+                                mv.to_uci(),
+                                piece.color(),
+                                self.side_to_move,
+                                ply
+                            );
+                        }
+                    }
+
                     pv.clear();
                     pv.push(mv);
                     pv.extend_from_slice(&local_pv);
@@ -606,5 +703,67 @@ mod tests {
         let result = pos.search(&mut tt, Some(Duration::from_millis(100)), None, None);
 
         assert!(!result.best_move.is_null());
+    }
+
+    #[test]
+    fn test_search_returns_correct_color_move() {
+        use crate::types::Color;
+
+        setup();
+        // This is the position where the bug occurred - black to move
+        let pos = Position::from_fen(
+            "r1bqkb1r/pppppp1p/2n2n2/6p1/2B1P3/5Q2/PPPPNPPP/RNB1K2R b KQkq - 5 4",
+        )
+        .unwrap();
+
+        assert_eq!(pos.side_to_move, Color::Black);
+
+        let mut tt = TranspositionTable::new(16);
+        let result = pos.search(&mut tt, None, Some(12), None);
+
+        // The best move should be a BLACK piece move
+        let from_sq = result.best_move.from_sq();
+        let piece = pos.piece_at(from_sq);
+        assert!(
+            piece.is_some(),
+            "Best move source square should have a piece"
+        );
+        assert_eq!(
+            piece.unwrap().color(),
+            Color::Black,
+            "Best move should be for black, but got move {} from {:?}",
+            result.best_move.to_uci(),
+            from_sq
+        );
+
+        // Verify the entire PV contains alternating color moves
+        let mut current_pos = pos.clone();
+        for (i, mv) in result.pv.iter().enumerate() {
+            let expected_color = if i % 2 == 0 {
+                Color::Black
+            } else {
+                Color::White
+            };
+            let from = mv.from_sq();
+            let piece = current_pos.piece_at(from);
+            assert!(
+                piece.is_some(),
+                "PV move {} ({}) should have a piece at source",
+                i,
+                mv.to_uci()
+            );
+            assert_eq!(
+                piece.unwrap().color(),
+                expected_color,
+                "PV move {} ({}) should be for {:?}, but piece is {:?}",
+                i,
+                mv.to_uci(),
+                expected_color,
+                piece.unwrap().color()
+            );
+
+            // Make the move to get the next position
+            current_pos = current_pos.make_move(*mv);
+        }
     }
 }
