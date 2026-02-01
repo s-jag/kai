@@ -27,8 +27,10 @@ impl Position {
             if mv.is_en_passant() {
                 SEE_VALUES[PieceType::Pawn as usize]
             } else {
-                let captured = self.piece_at(to).expect("Capture but no piece");
-                SEE_VALUES[captured.piece_type() as usize]
+                match self.piece_at(to) {
+                    Some(captured) => SEE_VALUES[captured.piece_type() as usize],
+                    None => return false, // Invalid capture, assume losing
+                }
             }
         } else {
             0
@@ -41,7 +43,10 @@ impl Position {
         }
 
         // Get the attacking piece value
-        let attacker = self.piece_at(from).expect("No piece at source");
+        let attacker = match self.piece_at(from) {
+            Some(p) => p,
+            None => return false, // No piece at source, invalid move
+        };
         let attacker_value = SEE_VALUES[attacker.piece_type() as usize];
 
         // Quick check: if we're capturing something and can afford to lose the attacker,

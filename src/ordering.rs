@@ -258,9 +258,15 @@ fn score_capture(pos: &Position, mv: Move) -> i32 {
         let victim = if mv.is_en_passant() {
             PieceType::Pawn
         } else {
-            pos.piece_at(mv.to_sq()).expect("Capture but no piece").piece_type()
+            match pos.piece_at(mv.to_sq()) {
+                Some(p) => p.piece_type(),
+                None => return 0, // Invalid capture
+            }
         };
-        let attacker = pos.piece_at(mv.from_sq()).expect("No piece at source").piece_type();
+        let attacker = match pos.piece_at(mv.from_sq()) {
+            Some(p) => p.piece_type(),
+            None => return 0, // No piece at source
+        };
 
         MVV_LVA[victim as usize][attacker as usize]
     } else if mv.is_promotion() {
