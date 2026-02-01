@@ -53,4 +53,4 @@ echo "Starting Kai on Lichess..."
 echo "Press Ctrl+C to stop"
 echo
 cd lichess-bot-repo
-python lichess_bot.py
+python lichess-bot.py
