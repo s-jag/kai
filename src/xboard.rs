@@ -38,7 +38,7 @@ pub struct XBoardEngine {
     tt_size_mb: usize,
     mode: EngineMode,
     /// Search depth limit (0 = no limit)
-    depth_limit: Option<i32>,
+    depth_limit: Option<u8>,
     /// Time controls
     time_white: u64,  // milliseconds
     time_black: u64,  // milliseconds
@@ -358,7 +358,8 @@ impl XBoardEngine {
 
         // Try SAN notation as fallback
         if let Some(mv) = self.parse_san(move_str) {
-            if let Some(new_pos) = self.position.try_make_move(mv) {
+            if self.position.is_legal(mv) {
+                let new_pos = self.position.make_move(mv);
                 self.game_history.push(self.position.hash);
                 self.position = new_pos;
 
@@ -523,6 +524,9 @@ impl XBoardEngine {
         // Reset stop flag
         STOP_FLAG.store(false, Ordering::SeqCst);
 
+        // Track search time
+        let start_time = std::time::Instant::now();
+
         // Run search
         let stop_flag: &'static AtomicBool = unsafe { std::mem::transmute(&STOP_FLAG) };
         let result = self.position.search(
@@ -531,6 +535,8 @@ impl XBoardEngine {
             self.depth_limit,
             Some(stop_flag),
         );
+
+        let elapsed_ms = start_time.elapsed().as_millis() as u64;
 
         // Output thinking info if post is enabled
         if self.post {
@@ -541,7 +547,7 @@ impl XBoardEngine {
                 "{} {} {} {} {}",
                 result.depth,
                 result.score,
-                result.time_ms / 10,
+                elapsed_ms / 10,
                 result.nodes,
                 result.pv.iter()
                     .map(|m| m.to_uci())
@@ -604,6 +610,7 @@ impl XBoardEngine {
         STOP_FLAG.store(false, Ordering::SeqCst);
 
         let stop_flag: &'static AtomicBool = unsafe { std::mem::transmute(&STOP_FLAG) };
+        let start_time = std::time::Instant::now();
 
         // Do iterative deepening, outputting after each depth
         for depth in 1..=100 {
@@ -622,13 +629,15 @@ impl XBoardEngine {
                 break;
             }
 
+            let elapsed_ms = start_time.elapsed().as_millis() as u64;
+
             // Output thinking in XBoard format
             writeln!(
                 stdout,
                 "{} {} {} {} {}",
                 result.depth,
                 result.score,
-                result.time_ms / 10,
+                elapsed_ms / 10,
                 result.nodes,
                 result.pv.iter()
                     .map(|m| m.to_uci())
