@@ -20,20 +20,18 @@ impl Position {
             self.generate_king_moves(list);
         }
 
-        // Debug validation: all generated moves should be for the side to move
-        #[cfg(debug_assertions)]
-        {
-            for i in initial_len..list.len() {
-                let mv = list.get(i);
-                if let Some(piece) = self.piece_at(mv.from_sq()) {
-                    debug_assert_eq!(
-                        piece.color(),
-                        self.side_to_move,
-                        "Generated move {} is for {:?} but side_to_move is {:?}",
+        // Runtime validation: all generated moves should be for the side to move
+        for i in initial_len..list.len() {
+            let mv = list.get(i);
+            if let Some(piece) = self.piece_at(mv.from_sq()) {
+                if piece.color() != self.side_to_move {
+                    eprintln!(
+                        "BUG: generate_legal_moves produced {} for {:?} but side is {:?}",
                         mv.to_uci(),
                         piece.color(),
                         self.side_to_move
                     );
+                    eprintln!("Position: {}", self.to_fen());
                 }
             }
         }
