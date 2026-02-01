@@ -228,13 +228,6 @@ impl Position {
     }
 }
 
-// Square constants needed for castling
-impl Square {
-    pub const F1: Square = Square(5);
-    pub const F8: Square = Square(61);
-    pub const D1: Square = Square(3);
-    pub const D8: Square = Square(59);
-}
 
 #[cfg(test)]
 mod tests {
