@@ -13,11 +13,12 @@ const DELTA_MARGIN: i16 = 900;
 
 impl Position {
     /// Quiescence search
+    /// qs_ply tracks depth within quiescence search (starts at 0)
     pub fn qsearch(
         &self,
         mut alpha: i16,
         beta: i16,
-        ply: i32,
+        qs_ply: i32,
         info: &mut SearchInfo,
         _tt: &mut TranspositionTable,
     ) -> i16 {
@@ -46,8 +47,8 @@ impl Position {
             alpha = stand_pat;
         }
 
-        // Limit quiescence depth
-        if ply >= MAX_QSEARCH_DEPTH as i32 {
+        // Limit quiescence depth - qs_ply is the depth within qsearch (0 at entry)
+        if qs_ply >= MAX_QSEARCH_DEPTH {
             return stand_pat;
         }
 
@@ -88,7 +89,7 @@ impl Position {
 
             // Make move and recurse
             let new_pos = self.make_move(mv);
-            let score = -new_pos.qsearch(-beta, -alpha, ply + 1, info, _tt);
+            let score = -new_pos.qsearch(-beta, -alpha, qs_ply + 1, info, _tt);
 
             // Check for timeout
             if info.stopped {

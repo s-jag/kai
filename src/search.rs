@@ -280,13 +280,22 @@ impl Position {
             }
         }
 
-        // Drop into quiescence search at depth 0
-        if depth <= 0 {
-            return self.qsearch(alpha, beta, ply, info, tt);
+        // Hard ply limit to prevent stack overflow
+        if ply >= MAX_PLY as i32 {
+            return self.evaluate();
         }
 
-        // Check extension
-        let depth = if in_check { depth + 1 } else { depth };
+        // Drop into quiescence search at depth 0
+        if depth <= 0 {
+            return self.qsearch(alpha, beta, 0, info, tt);
+        }
+
+        // Check extension (limited to prevent excessive depth growth)
+        let depth = if in_check && ply < (MAX_PLY as i32 / 2) {
+            depth + 1
+        } else {
+            depth
+        };
 
         // Static evaluation for pruning
         let static_eval = if in_check { -INFINITY } else { self.evaluate() };
