@@ -86,8 +86,12 @@ const BISHOP_MAGIC_NUMBERS: [u64; 64] = [
 
 /// Initialize attack tables - must be called before using magic bitboards
 pub fn init_magics() {
-    init_rook_attacks();
-    init_bishop_attacks();
+    use std::sync::Once;
+    static INIT: Once = Once::new();
+    INIT.call_once(|| {
+        init_rook_attacks();
+        init_bishop_attacks();
+    });
 }
 
 fn init_rook_attacks() {
