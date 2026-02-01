@@ -1,0 +1,51 @@
+# Rust build artifacts
+/target/
+**/*.rs.bk
+Cargo.lock
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Lichess bot secrets - NEVER COMMIT THESE
+lichess-bot/config.yml
+lichess-bot/.env
+lichess-bot/lichess-bot-repo/
+lichess-bot/venv/
+lichess-bot/__pycache__/
+lichess-bot/*.pyc
+
+# Keep template files (they don't contain secrets)
+!lichess-bot/config.yml.example
+!lichess-bot/.env.example
+
+# Logs and runtime data
+*.log
+logs/
+*.pgn
+pgn/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Development
+test_games/
+*.bak

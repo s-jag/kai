@@ -1,0 +1,74 @@
+# Kai Chess Engine - Lichess Bot Configuration
+# Copy this file to config.yml and set the LICHESS_BOT_TOKEN environment variable
+#
+# IMPORTANT: Never commit config.yml or put your token in this file!
+# Use: export LICHESS_BOT_TOKEN='your_token_here'
+
+token: ""  # Leave empty - lichess-bot reads from LICHESS_BOT_TOKEN env var
+
+url: "https://lichess.org"
+
+engine:
+  dir: "../target/release"
+  name: "kai"
+  protocol: "uci"
+  ponder: false
+
+uci_options:
+  Hash: 256
+
+abort_time: 20
+fake_think_time: false
+rate_limiting_delay: 0
+move_overhead: 100
+
+challenge:
+  concurrency: 1
+  sort_by: "best"
+  accept_bot: true
+  only_bot: false
+  max_increment: 180
+  min_increment: 0
+  max_base: 315360000
+  min_base: 0
+  variants:
+    - standard
+  time_controls:
+    - bullet
+    - blitz
+    - rapid
+    - classical
+  modes:
+    - casual
+    - rated
+
+greeting:
+  hello: "Hi! I'm Kai, a chess engine written in Rust. Good luck!"
+  goodbye: "Good game! Thanks for playing."
+
+# Resign when clearly losing
+draw_or_resign:
+  resign_enabled: true
+  resign_score: -1000
+  resign_for_egtb_minus_two: true
+  resign_moves: 5
+  offer_draw_enabled: true
+  offer_draw_score: 0
+  offer_draw_moves: 5
+  offer_draw_pieces: 10
+
+# Matchmaking (auto-seek games)
+matchmaking:
+  allow_matchmaking: false
+  challenge_variant: "standard"
+  challenge_timeout: 30
+  challenge_initial_time:
+    - 60
+    - 120
+    - 180
+  challenge_increment:
+    - 1
+    - 2
+  opponent_min_rating: 600
+  opponent_max_rating: 4000
+  challenge_mode: "rated"

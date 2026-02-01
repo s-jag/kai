@@ -1,0 +1,53 @@
+# Kai Chess Engine - Lichess Bot SystemD Service
+#
+# Installation:
+#   1. Copy this file to /etc/systemd/system/kai-bot.service
+#   2. Create /opt/kai/lichess-bot/.env with your LICHESS_BOT_TOKEN
+#   3. Run: sudo systemctl daemon-reload
+#   4. Run: sudo systemctl enable kai-bot
+#   5. Run: sudo systemctl start kai-bot
+#
+# Commands:
+#   sudo systemctl status kai-bot   - Check status
+#   sudo systemctl stop kai-bot     - Stop bot
+#   sudo systemctl restart kai-bot  - Restart bot
+#   journalctl -u kai-bot -f        - View logs
+
+[Unit]
+Description=Kai Chess Bot on Lichess
+Documentation=https://github.com/s-jag/kai
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=kai
+Group=kai
+
+# Working directory where lichess-bot is installed
+WorkingDirectory=/opt/kai/lichess-bot/lichess-bot-repo
+
+# Load environment variables (contains LICHESS_BOT_TOKEN)
+EnvironmentFile=/opt/kai/lichess-bot/.env
+
+# Use the virtual environment Python
+ExecStart=/opt/kai/lichess-bot/venv/bin/python lichess_bot.py
+
+# Restart on failure
+Restart=always
+RestartSec=10
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/kai
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=kai-bot
+
+[Install]
+WantedBy=multi-user.target

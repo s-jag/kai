@@ -1,0 +1,24 @@
+# Kai Chess Engine - Lichess Bot Docker Compose
+#
+# Usage:
+#   export LICHESS_BOT_TOKEN='your_token'
+#   docker-compose up -d
+#
+# Or create a .env file with LICHESS_BOT_TOKEN=your_token
+
+version: '3.8'
+
+services:
+  kai-bot:
+    build:
+      context: ..
+      dockerfile: lichess-bot/Dockerfile
+    container_name: kai-lichess-bot
+    environment:
+      - LICHESS_BOT_TOKEN=${LICHESS_BOT_TOKEN}
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
