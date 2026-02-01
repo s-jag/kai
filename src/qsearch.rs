@@ -70,16 +70,20 @@ impl Position {
                 let captured_value = if mv.is_en_passant() {
                     100 // Pawn value
                 } else {
-                    crate::see::see_piece_value(
-                        self.piece_at(mv.to_sq())
-                            .expect("Capture but no piece")
-                            .piece_type(),
-                    )
+                    match self.piece_at(mv.to_sq()) {
+                        Some(p) => crate::see::see_piece_value(p.piece_type()),
+                        None => continue, // Invalid capture, skip
+                    }
                 };
 
                 if stand_pat + captured_value + 200 < alpha {
                     continue;
                 }
+            }
+
+            // Skip illegal moves (generate_captures produces pseudo-legal moves)
+            if !self.is_legal(mv) {
+                continue;
             }
 
             // Make move and recurse
