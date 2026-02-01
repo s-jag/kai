@@ -36,10 +36,19 @@ impl Position {
         let them = us.flip();
         let from = mv.from_sq();
         let to = mv.to_sq();
-        let flags = mv.flags();
+        let _flags = mv.flags();
 
-        // Get the moving piece
-        let piece = self.board[from.0 as usize].expect("No piece at source square");
+        // Get the moving piece - if no piece, this is an invalid move
+        let piece = match self.board[from.0 as usize] {
+            Some(p) => p,
+            None => {
+                // Invalid move - just flip the side to move and return
+                // This shouldn't happen but prevents crashes
+                self.side_to_move = them;
+                self.hash ^= crate::zobrist::ZOBRIST.side_key();
+                return;
+            }
+        };
         let piece_type = piece.piece_type();
 
         // Update en passant (remove old EP square from hash)
