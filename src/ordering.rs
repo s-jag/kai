@@ -179,9 +179,15 @@ fn score_move(
         let victim = if mv.is_en_passant() {
             PieceType::Pawn
         } else {
-            pos.piece_at(mv.to_sq()).expect("Capture but no piece").piece_type()
+            match pos.piece_at(mv.to_sq()) {
+                Some(p) => p.piece_type(),
+                None => return 0, // Invalid move, give it lowest priority
+            }
         };
-        let attacker = pos.piece_at(mv.from_sq()).expect("No piece at source").piece_type();
+        let attacker = match pos.piece_at(mv.from_sq()) {
+            Some(p) => p.piece_type(),
+            None => return 0, // Invalid move, give it lowest priority
+        };
 
         let mvv_lva = MVV_LVA[victim as usize][attacker as usize];
 
